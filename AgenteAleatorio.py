@@ -38,7 +38,7 @@ while not done:
     action = env.action_space.sample() #acción aleatoria
     obs, reward, done, info = env.step(action) #ejecución de la acción elegida
     total_reward += reward
-    if (step % 100) == 0:
+    if (step % 50) == 0:
         print("\n\nReward acumulada: {}".format(total_reward))
         print("Posición portfolio:")
         print(obs['portfolio'])
