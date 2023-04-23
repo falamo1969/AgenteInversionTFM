@@ -23,7 +23,7 @@ class FinancialEconomicEnv(gym.Env):
                  portfolio = [],    # Composición del portfolio (normalmente todos las participacioines en los ETFs a cero)
                  day=0):
         
-        self.CUSTODY_PERIOD = 30 # Por ahora trato así los periodos de custodia hasta que me decida por el tratamiento de fechas
+        self.CUSTODY_PERIOD = 5 # Por ahora trato así los periodos de custodia hasta que me decida por el tratamiento de fechas
 
         self.fin_data_df = fin_data_df
         self.precios_ETFs_df = precios_ETFs_df
@@ -42,7 +42,7 @@ class FinancialEconomicEnv(gym.Env):
 
         self.day0 = day        
         self.plus_minus = 0
-        self.episode = 0
+        self.n_step = 0
         
         # Defino action_space como un array del número de ETFs en los que se puede tomar posición con tres posibles valores:
         #       0 Hold
@@ -96,7 +96,8 @@ class FinancialEconomicEnv(gym.Env):
 
     def _get_value_portfolio(self):
         # retorna el valor de los ETFs
-        return sum(x*y for x, y in zip(self.portfolio, self.precios_ETFs_df.loc[self.day, :]))
+        return np.round(sum(x*y for x, y in 
+                        zip(self.portfolio, self.precios_ETFs_df.loc[self.day, :])),2)
     
     def _get_inversion_actualizada(self):
         return self.valor_inversion * (1+self.inflacion/365)
@@ -108,34 +109,35 @@ class FinancialEconomicEnv(gym.Env):
         # Vendo los ETF que se indican en actions como -1, en la cantidad volume_trade
 
         # Se aplica el coste de trading, tipicamente 25 bp
-        actions_index = np.array(actions)
-        for i in np.where(actions_index==1)[0]:
+        actions_sell = np.where(np.array(actions)==1)[0]
+        for i in actions_sell:
             # Comprobar si hay ETFs para vender
             if self.portfolio[i]>=self.volume_trade:
-                trading_cost_step = -np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
-                self.cash += np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i],2) + trading_cost_step
-                self.total_trading_cost += trading_cost_step
+                trading_cost_trade = np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
+                self.cash += np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i],2) - trading_cost_trade
+                self.total_trading_cost -= trading_cost_trade
                 self.portfolio[i]-=self.volume_trade
 
     def _buy_ETFs(self, actions):
         # Compro los ETF que se indica en actions como 1, en la cantidad self.volume_trade
         # Se aplica el coste de trading, tipicamente 25 bp
         # Como puede no haber suficiente cash disponible, voy a comprar con un orden aleatorio hasta que no haya más cash
-        actions_index = np.array(actions)
-        actions_buy = np.where(actions_index==2)[0]
+        actions_buy = np.where(np.array(actions)==2)[0]
         for i in np.random.choice(actions_buy, len(actions_buy), replace =False):
-            trading_cost_step = -np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
-            coste = np.round(self.volume_trade * self.precios_ETFs_df.iloc[self.day, i],2) + trading_cost_step
+            trading_cost_trade = np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
+            coste = np.round(self.volume_trade * self.precios_ETFs_df.iloc[self.day, i],2) + trading_cost_trade
             if self.cash >= coste:
                 self.cash -= coste
                 self.portfolio[i] += self.volume_trade
-                self.total_trading_cost += trading_cost_step
+                self.total_trading_cost -= trading_cost_trade
 
     def _get_info(self):
         return {'cash': self.cash , 'porfolio_value': self.valor_portfolio, 'inversion': self.valor_inversion,
                 'total_trading_cost': self.total_trading_cost, 'total_custody_cost': self.total_custody_cost}
 
     def step(self, actions):
+        # Actualizo el número de steps
+        self.n_step += 1
 
         # Vendo ETFs según las acciones
         self._sell_ETFs(actions)
@@ -144,15 +146,19 @@ class FinancialEconomicEnv(gym.Env):
         self._buy_ETFs(actions)
 
         # Calculo de gastos de custodia
-        custody_cost_step = -self._get_value_portfolio() * self.custody_cost/365
+        custody_cost_step = self._get_value_portfolio() * self.custody_cost/365
         self.custody_cost_accrual += custody_cost_step
 
-        if (self.episode % self.CUSTODY_PERIOD) ==0:
+        if (self.n_step % self.CUSTODY_PERIOD) == 0:
             # Aplico gastos de custodia
         
-            while self.custody_cost_accrual > self.cash:
+            while (self.custody_cost_accrual > self.cash) & (self._get_value_portfolio()>0):
                 # No hay suficiente cash hay que vender algún ETF -random-
-                actions = np.random.choice(len(self.portfolio), 1)
+                # siempre que haya posición, si no hay que salir del episodio
+                ETF_to_sell = np.random.choice(np.where(np.array(self.portfolio)>0)[0], 1)
+                n_actions = len(self.action_space)
+                actions = [0 for i in range(n_actions)]
+                actions[ETF_to_sell[0]] = 1
                 self._sell_ETFs(actions)
                 # El ETF que se ha vendido no acarrea gastos de custodia en este step
                 self.custody_cost_accrual -= custody_cost_step
@@ -161,7 +167,7 @@ class FinancialEconomicEnv(gym.Env):
 
             # Cargo el gasto de custodia en el cash
             self.cash -= self.custody_cost_accrual
-            self.total_custody_cost += self.custody_cost_accrual
+            self.total_custody_cost -= self.custody_cost_accrual
             self.custody_cost_accrual = 0
        
         # Valoro el portfolio de ETF y le sumo el cash no invertido
@@ -178,7 +184,7 @@ class FinancialEconomicEnv(gym.Env):
         info = self._get_info()
         self.day += 1        
 
-        if self.day >= len(self.fin_data_df):
+        if (self.day >= len(self.fin_data_df)) or (self.valor_portfolio < 0.0):
             # Ya no hay más muestras para este episodio
             state = []
             done = True
