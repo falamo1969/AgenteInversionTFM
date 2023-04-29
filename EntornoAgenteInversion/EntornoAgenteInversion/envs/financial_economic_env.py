@@ -23,7 +23,7 @@ class FinancialEconomicEnv(gym.Env):
                  portfolio = [],    # Composición del portfolio (normalmente todos las participacioines en los ETFs a cero)
                  day=0):
         
-        self.CUSTODY_PERIOD = 5 # Por ahora trato así los periodos de custodia hasta que me decida por el tratamiento de fechas
+        self.CUSTODY_PERIOD = 30 # Por ahora trato así los periodos de custodia hasta que me decida por el tratamiento de fechas
 
         self.fin_data_df = fin_data_df
         self.precios_ETFs_df = precios_ETFs_df
@@ -56,11 +56,11 @@ class FinancialEconomicEnv(gym.Env):
 
         # Defino observation_space como un diccionario para mayor facilidad ya que hay mezcla de datos
         self.observation_space = spaces.Dict({
-                                'cash':         spaces.Box(low=0, high=np.inf),
-                                'plus_minus':   spaces.Box(low=-self.initial_amount, high=np.inf),
+                                'cash':         spaces.Box(low=0, high=np.inf, shape=(1,)),
+                                'plus_minus':   spaces.Box(low=-self.initial_amount, high=np.inf, shape=(1,)),
                                 'fin_data':     spaces.Box(low=-np.inf, high=np.inf, shape=(self.fin_data_df.shape[1],)),
                                 'ETF_prices':   spaces.Box(low=0, high=np.inf, shape=(self.precios_ETFs_df.shape[1],)),
-                                'portfolio':    spaces.Box(low=0, high=np.inf, shape=(len(self.initial_portfolio),), dtype=int)
+                                'portfolio':    spaces.Box(low=0, high=np.iinfo(np.int32).max, shape=(len(self.initial_portfolio),), dtype='int32')
                                 })
 
         self.cash = initial_amount
@@ -86,11 +86,11 @@ class FinancialEconomicEnv(gym.Env):
         # Precios de los ETFs
         # Composición del portfolio (# participaciones en cada ETF)
 
-        state = {'cash':        self.cash,
-                 'plus_minus':  self.plus_minus,
-                 'fin_data':    self.fin_data_df.loc[self.day, :].values.tolist(),
-                 'ETF_prices':  self.precios_ETFs_df.loc[self.day, :].values.tolist(),
-                 'portfolio':   self.portfolio
+        state = {'cash':        np.array(self.cash, dtype='float32').reshape(1,),
+                 'plus_minus':  np.array(self.plus_minus, dtype='float32').reshape(1,),
+                 'fin_data':    self.fin_data_df.loc[self.day, :].to_numpy(dtype='float32'),
+                 'ETF_prices':  self.precios_ETFs_df.loc[self.day, :].to_numpy(dtype='float32'),
+                 'portfolio':   np.array(self.portfolio, dtype='int32')
                 }
         return state
 
@@ -133,7 +133,8 @@ class FinancialEconomicEnv(gym.Env):
 
     def _get_info(self):
         return {'cash': self.cash , 'porfolio_value': self.valor_portfolio, 'inversion': self.valor_inversion,
-                'total_trading_cost': self.total_trading_cost, 'total_custody_cost': self.total_custody_cost}
+                'total_trading_cost': self.total_trading_cost, 'total_custody_cost': self.total_custody_cost,
+                'portfolio': self.portfolio, 'plus-minus': self.plus_minus}
 
     def step(self, actions):
         # Actualizo el número de steps
@@ -208,4 +209,4 @@ class FinancialEconomicEnv(gym.Env):
         self.total_custody_cost = 0
         self.custody_cost_accrual = 0
 
-        return self._get_obs(), self._get_info()
+        return self._get_obs()
