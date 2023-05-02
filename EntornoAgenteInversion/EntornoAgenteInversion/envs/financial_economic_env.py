@@ -64,7 +64,7 @@ class FinancialEconomicEnv(gym.Env):
                                 })
 
         self.cash = initial_amount
-        self.portfolio =  self.initial_portfolio
+        self.portfolio =  self.initial_portfolio.copy()
         self.day = day
         self.valor_portfolio = initial_amount + self._get_value_portfolio() # Valor actual del portfolio
         self.valor_inversion = self.valor_portfolio  # Valor de la inversión actualizada por la inflación (objetivo a batir)
@@ -198,7 +198,7 @@ class FinancialEconomicEnv(gym.Env):
     def reset(self):
         # Inicializo todos los datos con los iniciales
         self.day = self.day0
-        self.portfolio = self.initial_portfolio
+        self.portfolio =  self.initial_portfolio.copy()
         self.cash = self.initial_amount
         self.valor_portfolio = self.cash + sum(x*y for x, y in zip(self.portfolio, self.precios_ETFs_df.loc[self.day,:])) # Valor actual del portfolio
         self.valor_inversion = self.valor_portfolio  # Valor de la inversión actualizada por la inflación (objetivo a batir)
