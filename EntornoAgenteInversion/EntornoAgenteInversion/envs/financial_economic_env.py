@@ -14,8 +14,9 @@ class FinancialEconomicEnv(gym.Env):
     """A trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
     def __init__(self, 
-                 fin_data_df,       # Contiene todos los datos financieros y económicos
-                 precios_ETFs_df,   # Contiene los precios de los ETFs sobre los que C/V
+                 fin_data_df,       # Contiene todos los datos financieros 
+                 eco_data_df,       # Contiene todos los datos económicos
+                 ETF_prices_df,     # Contiene los precios de los ETFs sobre los que C/V
                  initial_amount,    # Inversión cash inicial
                  volume_trade,      # Número de acciones fijo sobre el que se opera (C/V)
                  trading_cost,      # Coste de operación (C/V)
@@ -26,11 +27,12 @@ class FinancialEconomicEnv(gym.Env):
         self.CUSTODY_PERIOD = 30 # Por ahora trato así los periodos de custodia hasta que me decida por el tratamiento de fechas
 
         self.fin_data_df = fin_data_df
-        self.precios_ETFs_df = precios_ETFs_df
+        self.eco_data_df = eco_data_df
+        self.ETF_prices_df = ETF_prices_df
         self.initial_amount = initial_amount
         self.volume_trade = volume_trade
         if portfolio == []:
-            self.initial_portfolio = [0 for i in range(self.precios_ETFs_df.shape[1])]
+            self.initial_portfolio = [0 for i in range(self.ETF_prices_df.shape[1])]
         else:
             self.initial_portfolio = portfolio
         
@@ -52,14 +54,13 @@ class FinancialEconomicEnv(gym.Env):
         actions = [3 for i in range(len(self.initial_portfolio))]
         self.action_space = spaces.MultiDiscrete(actions)
         
-        print(self.fin_data_df.shape[1])
-
         # Defino observation_space como un diccionario para mayor facilidad ya que hay mezcla de datos
         self.observation_space = spaces.Dict({
                                 'cash':         spaces.Box(low=0, high=np.inf, shape=(1,)),
                                 'plus_minus':   spaces.Box(low=-self.initial_amount, high=np.inf, shape=(1,)),
                                 'fin_data':     spaces.Box(low=-np.inf, high=np.inf, shape=(self.fin_data_df.shape[1],)),
-                                'ETF_prices':   spaces.Box(low=0, high=np.inf, shape=(self.precios_ETFs_df.shape[1],)),
+                                'eco_data':     spaces.Box(low=-np.inf, high=np.inf, shape=(self.eco_data_df.shape[1],)),
+                                'ETF_prices':   spaces.Box(low=0, high=np.inf, shape=(self.ETF_prices_df.shape[1],)),
                                 'portfolio':    spaces.Box(low=0, high=np.iinfo(np.int32).max, shape=(len(self.initial_portfolio),), dtype='int32')
                                 })
 
@@ -72,7 +73,7 @@ class FinancialEconomicEnv(gym.Env):
         self.inflacion = self._get_inflation()
 
 #        self.n_indicators = fin_data_df.shape[1]
-#        self.n_ETFs = precios_ETFs_df.shape[1]
+#        self.n_ETFs = ETF_prices_df.shape[1]
 
 #        self.previous_state = []
 #        self.data = self.fin_data_df.loc[self.day, :]
@@ -89,7 +90,8 @@ class FinancialEconomicEnv(gym.Env):
         state = {'cash':        np.array(self.cash, dtype='float32').reshape(1,),
                  'plus_minus':  np.array(self.plus_minus, dtype='float32').reshape(1,),
                  'fin_data':    self.fin_data_df.loc[self.day, :].to_numpy(dtype='float32'),
-                 'ETF_prices':  self.precios_ETFs_df.loc[self.day, :].to_numpy(dtype='float32'),
+                 'eco_data':    self.eco_data_df.loc[self.day, :].to_numpy(dtype='float32'),
+                 'ETF_prices':  self.ETF_prices_df.loc[self.day, :].to_numpy(dtype='float32'),
                  'portfolio':   np.array(self.portfolio, dtype='int32')
                 }
         return state
@@ -97,13 +99,13 @@ class FinancialEconomicEnv(gym.Env):
     def _get_value_portfolio(self):
         # retorna el valor de los ETFs
         return np.round(sum(x*y for x, y in 
-                        zip(self.portfolio, self.precios_ETFs_df.loc[self.day, :])),2)
+                        zip(self.portfolio, self.ETF_prices_df.loc[self.day, :])),2)
     
     def _get_inversion_actualizada(self):
-        return self.valor_inversion * (1+self.inflacion/365)
+        return self.valor_inversion * (1+self.inflacion/3000)
     
     def _get_inflation(self):
-        return self.fin_data_df.loc[self.day, 'Inflation']
+        return self.eco_data_df.loc[self.day, 'CPI (mom)']
     
     def _sell_ETFs(self, actions):
         # Vendo los ETF que se indican en actions como -1, en la cantidad volume_trade
@@ -113,8 +115,8 @@ class FinancialEconomicEnv(gym.Env):
         for i in actions_sell:
             # Comprobar si hay ETFs para vender
             if self.portfolio[i]>=self.volume_trade:
-                trading_cost_trade = np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
-                self.cash += np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i],2) - trading_cost_trade
+                trading_cost_trade = np.round(self.volume_trade*self.ETF_prices_df.iloc[self.day,i] * self.trading_cost, 2)
+                self.cash += np.round(self.volume_trade*self.ETF_prices_df.iloc[self.day,i],2) - trading_cost_trade
                 self.total_trading_cost -= trading_cost_trade
                 self.portfolio[i]-=self.volume_trade
 
@@ -124,8 +126,8 @@ class FinancialEconomicEnv(gym.Env):
         # Como puede no haber suficiente cash disponible, voy a comprar con un orden aleatorio hasta que no haya más cash
         actions_buy = np.where(np.array(actions)==2)[0]
         for i in np.random.choice(actions_buy, len(actions_buy), replace =False):
-            trading_cost_trade = np.round(self.volume_trade*self.precios_ETFs_df.iloc[self.day,i] * self.trading_cost, 2)
-            coste = np.round(self.volume_trade * self.precios_ETFs_df.iloc[self.day, i],2) + trading_cost_trade
+            trading_cost_trade = np.round(self.volume_trade*self.ETF_prices_df.iloc[self.day,i] * self.trading_cost, 2)
+            coste = np.round(self.volume_trade * self.ETF_prices_df.iloc[self.day, i],2) + trading_cost_trade
             if self.cash >= coste:
                 self.cash -= coste
                 self.portfolio[i] += self.volume_trade
@@ -200,7 +202,7 @@ class FinancialEconomicEnv(gym.Env):
         self.day = self.day0
         self.portfolio =  self.initial_portfolio.copy()
         self.cash = self.initial_amount
-        self.valor_portfolio = self.cash + sum(x*y for x, y in zip(self.portfolio, self.precios_ETFs_df.loc[self.day,:])) # Valor actual del portfolio
+        self.valor_portfolio = self.cash + sum(x*y for x, y in zip(self.portfolio, self.ETF_prices_df.loc[self.day,:])) # Valor actual del portfolio
         self.valor_inversion = self.valor_portfolio  # Valor de la inversión actualizada por la inflación (objetivo a batir)
         self.inflacion = self._get_inflation()
         self.plus_minus = 0

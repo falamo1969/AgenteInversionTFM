@@ -12,8 +12,8 @@ import EntornoAgenteInversion
 from ETL_data import ETL_data_df
 
 #stable_baselines 3
-from stable_baselines3 import PPO
-from stable_baselines3.ppo import MlpPolicy, MultiInputPolicy
+from stable_baselines3 import A2C
+from stable_baselines3.ppo import MultiInputPolicy
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
@@ -56,39 +56,18 @@ log_dir = "./logs/"
 os.makedirs(log_dir, exist_ok=True)
 env =  Monitor(env, log_dir)
 
-model = PPO(MultiInputPolicy, env, verbose=2, tensorboard_log=log_dir)
+model = A2C(MultiInputPolicy, env, verbose=2, tensorboard_log=log_dir)
 
 # Sin entrenar
 #mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, deterministic=True)
 
 #print(f"mean_reward={mean_reward:.2f} +/- {std_reward}")
 
-
-n_episodes_train = 10
-n_steps_max = train_data['ETF_prices'].shape[0]
-
-#model = PPO.load("Models/PPO_fake_data.model")
-
-
-
-
-
-
 # Train the model
 #model.learn(n_episodes_train*n_steps_max, progress_bar=True,callback=WandbCallback())
 
 #callback=MyCallback()
+print("Empezando a entrenar")
 model.learn(total_timesteps=1000000, progress_bar=True)
-
-
-
-#model.learn(total_timesteps=n_episodes_train*n_steps_max, progress_bar=True)
-
-# ...
-
-# Create and train the model
-#model.learn(total_timesteps=10000, callback=PlotCallback())
-
-model.save("Models/PPO_data.model")
-
-#del model # remove to demonstrate saving and loading
+print("Fin entrenamiento y salvando modelo")
+model.save("Models/a2c_data_1E6.model")
