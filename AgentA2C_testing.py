@@ -95,11 +95,6 @@ print("Media del tiempo de ejecución {:2f}, varianza {:2f}".format(np.mean(l_ex
 print("\nSteps para resolver cada episodio")
 print("Media de pasos {:2f}, varianza {:2f}".format(np.mean(l_n_steps), np.std(l_n_steps)))
 
-if verbose == 1:
-    for i in range(n_episodes):
-        print("\nInfo {}".format(i))
-        print(l_info[i])
-
 
 agente_A2C_pickle = {'l_total_reward': l_total_reward,
                         'l_exe_time': l_exe_time,
