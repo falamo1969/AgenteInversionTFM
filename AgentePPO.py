@@ -32,7 +32,7 @@ def AgentePPOTrain(model_name, train_data, total_timesteps=1000000, inversion = 
     # Para el monitor de TensorBoard
     env =  Monitor(env, log_dir)
 
-    model = PPO(MultiInputPolicy, env, verbose=2, tensorboard_log=log_dir)
+    model = PPO(MultiInputPolicy, env, verbose=0, tensorboard_log=log_dir)
 
     if verbose > 0:
         print("Empezando a entrenar PPO_{}".format(model_name))
