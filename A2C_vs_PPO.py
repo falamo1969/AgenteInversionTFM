@@ -30,7 +30,6 @@ def plot_result(name_l, result, titulo):
 
 test_name_l = ['2008-2009', '2020-2022', '2012-2014', '2018-2020']
 resultados  = ['l_total_reward', 'l_exe_time']
-A2C_results = pickle.load(open('./results/A2C_2008-2009_pickle.pickle', 'rb'))
 for result in resultados:
     plot_result(test_name_l, result, "Total reward")
 

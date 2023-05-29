@@ -31,6 +31,7 @@ class FinancialEconomicEnv(gym.Env):
         self.ETF_prices_df = ETF_prices_df
         self.initial_amount = initial_amount
         self.volume_trade = volume_trade
+        self.n_single_action = 3
         if portfolio == []:
             self.initial_portfolio = [0 for i in range(self.ETF_prices_df.shape[1])]
         else:
@@ -51,7 +52,7 @@ class FinancialEconomicEnv(gym.Env):
         #       1 Sell
         #       2 Buy
 
-        actions = [3 for i in range(len(self.initial_portfolio))]
+        actions = [self.n_single_action for i in range(len(self.initial_portfolio))]
         self.action_space = spaces.MultiDiscrete(actions)
         
         # Defino observation_space como un diccionario para mayor facilidad ya que hay mezcla de datos
@@ -78,7 +79,15 @@ class FinancialEconomicEnv(gym.Env):
 #        self.previous_state = []
 #        self.data = self.fin_data_df.loc[self.day, :]
 
+    def get_obs_size(self):
+        obs_size = 0
+        for (_, subspace) in self.observation_space.spaces.items():
+            obs_size += subspace.shape[0]
+        return obs_size
 
+    def get_action_size(self):
+        return [self.n_single_action, len(self.initial_portfolio)]
+    
     def _get_obs(self):
         """ Estructura el estado"""
         # El estado se compone del diccionario de los valores y listas siguientes:
@@ -95,6 +104,7 @@ class FinancialEconomicEnv(gym.Env):
                  'portfolio':   np.array(self.portfolio, dtype='int32')
                 }
         return state
+    
 
     def _get_value_portfolio(self):
         # retorna el valor de los ETFs
