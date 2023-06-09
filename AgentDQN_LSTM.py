@@ -104,11 +104,11 @@ class AgentDQNLSTM:
         else:
             action = self.get_action() # acción a partir del valor de Q (elección de la acción con mejor Q)
         
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done, info = self.env.step(action)
         self.next_state =  self.flatten_state(next_state) #Recordar preprocesar los estados
         self.total_reward += reward
 
-        return action, reward, done
+        return action, reward, done, info
 
     def train(self, gamma=0.99, n_episodes=1000, dnn_update_frequency=7, dnn_sync_frequency=30, 
                     min_epsilon = 0.01, epsilon=0.1, eps_decay=0.99, nblock=10, verbose=0):
@@ -171,20 +171,19 @@ class AgentDQNLSTM:
         for i in range(self.n_assets):
             self.main_network[i].state_dict(torch.load(fname+"_"+str(i)+".pth"))
 
-    def test(self, n_episodes=10):
-        l_total_rewards = []
-        for episode in range(n_episodes):
-            # Inicialización del entorno
-            next_state = self.env.reset()
-            self.next_state = self.flatten_state(next_state)
-            self.total_reward = 0
-            step = 1
-            done = False
+    def test(self):
+        # Inicialización del entorno
+        next_state = self.env.reset()
+        self.next_state = self.flatten_state(next_state)
+        self.total_reward = 0
+        eps_reward = 0
+        info_step = []
+        done = False
 
-            while not done:     
-                self.state = self.next_state.copy()
-                action, reward, done = self.step('test')
-                if done:
-                    l_total_rewards.append(self.total_reward)    
-            print("Episode {} \tReward: {:.2f}".format(episode, self.total_reward))
-        return l_total_rewards
+        while not done:     
+            self.state = self.next_state.copy()
+            _, reward, done, info = self.step('test')
+            eps_reward += reward
+            info_step.append(deepcopy(info))
+                
+        return eps_reward, info_step

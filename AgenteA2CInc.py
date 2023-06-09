@@ -111,4 +111,9 @@ def AgenteA2CTest(model, test_data, results_file, n_episodes=10, inversion = 100
                             'l_info': l_info}
 
     # Salvo resultados
-    pickle.dump(agente_A2C_pickle,open('./results/A2C_'+ results_file +'_pickle.pickle', 'wb'))    
+    pickle.dump(agente_A2C_pickle,open('./results/A2C_'+ results_file +'_pickle.pickle', 'wb'))
+    
+def A2CTrainedAgentLoad(model_name):
+    fname = "./Models/A2C_" + model_name +"_data.model"
+    model = A2C.load(fname, env=None)
+    return model

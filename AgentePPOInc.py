@@ -112,3 +112,8 @@ def AgentePPOTest(model, test_data, results_file, n_episodes=10, inversion = 100
 
     # Salvo resultados
     pickle.dump(agente_PPO_pickle,open('./results/PPO_'+ results_file +'_pickle.pickle', 'wb'))    
+
+def PPOTrainedAgentLoad(model_name):
+    fname = "./Models/PPO" + model_name +"_data.model"
+    model = PPO.load(fname, env=None)
+    return model    

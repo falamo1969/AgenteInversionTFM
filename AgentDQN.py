@@ -168,23 +168,19 @@ class AgentDQN:
         for i in range(self.n_assets):
             self.main_network[i].state_dict(torch.load(fname+"_"+str(i)+".pth"))
 
-    def test(self, n_episodes=10):
-        l_total_rewards = []
-        info_eps = []
-        for episode in range(n_episodes):
-            # Inicialización del entorno
-            info_step = []
-            next_state = self.env.reset()
-            self.next_state = self.flatten_state(next_state)
-            self.total_reward = 0
-            done = False
+    def test(self):
+        # Inicialización del entorno
+        info_step = []
+        next_state = self.env.reset()
+        self.next_state = self.flatten_state(next_state)
+        self.total_reward = 0
+        eps_reward = 0
+        done = False
 
-            while not done:     
-                self.state = self.next_state.copy()
-                _, _, done, info = self.step('test')
-                info_step.append(deepcopy(info))
-                if done:
-                    l_total_rewards.append(self.total_reward)
-                    info_eps.append(info_step)   
-            print("Episode {} \tReward: {:.2f}".format(episode, self.total_reward))
-        return l_total_rewards, info_eps
+        while not done:     
+            self.state = self.next_state.copy()
+            _, reward, done, info = self.step('test')
+            eps_reward += reward
+            info_step.append(deepcopy(info))
+
+        return eps_reward, info_step
