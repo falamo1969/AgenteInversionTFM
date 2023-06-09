@@ -9,20 +9,23 @@ import numpy as np
 import pickle
 import time
 
-class QNetwork(nn.Module):
+class QLSTMNetwork(nn.Module):
     def __init__(self, input_size, output_size):
-        super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)
+        super(QLSTMNetwork, self).__init__()
+#        self.fc1 = nn.Linear(input_size, 128)
+        self.fc1 = nn.LSTM(input_size, hidden_size=128, num_layers =1, batch_first =  True)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, output_size)
         
     def forward(self, state):
-        x = torch.relu(self.fc1(state))
+#        x = torch.relu(self.fc1(state))
+        x = torch.unsqueeze(state, 0)
+        x, _= self.fc1(x)
         x = torch.relu(self.fc2(x))
-        q_values =self.fc3(x)
+        q_values = self.fc3(x.flatten())
         return q_values
     
-class AgentDQN:
+class AgentDQNLSTM:
     def __init__(self, env, state_size, action_size, lr=0.001, epsilon=0.1):
         self.env= env
         self.state_size = state_size
@@ -47,7 +50,7 @@ class AgentDQN:
 
     def _initialize(self):
         # Inicialización de las redes
-        self.main_network = [QNetwork(self.state_size, self.action_size).to(self.device) for _ in range(self.n_assets)]
+        self.main_network = [QLSTMNetwork(self.state_size, self.action_size).to(self.device) for _ in range(self.n_assets)]
         self.target_network= deepcopy(self.main_network)
         self.optimizer = [optim.Adam(self.main_network[i].parameters(), lr = self.lr) for i in range(self.n_assets)]
 
@@ -101,11 +104,11 @@ class AgentDQN:
         else:
             action = self.get_action() # acción a partir del valor de Q (elección de la acción con mejor Q)
         
-        next_state, reward, done, info = self.env.step(action)
+        next_state, reward, done, _ = self.env.step(action)
         self.next_state =  self.flatten_state(next_state) #Recordar preprocesar los estados
         self.total_reward += reward
 
-        return action, reward, done, info
+        return action, reward, done
 
     def train(self, gamma=0.99, n_episodes=1000, dnn_update_frequency=7, dnn_sync_frequency=30, 
                     min_epsilon = 0.01, epsilon=0.1, eps_decay=0.99, nblock=10, verbose=0):
@@ -114,7 +117,7 @@ class AgentDQN:
         self.gamma = gamma
 
         episode = 0
-        print("Training DQN Agent...")
+        print("Training DQN-LSTM Agent...")
         for episode in range(1, n_episodes+1):
             t_start = time.time()
             # Inicialización del entorno
@@ -126,7 +129,7 @@ class AgentDQN:
 
             while done == False:
                 self.state = self.next_state.copy()
-                action, reward, done, info = self.step()
+                action, reward, done = self.step()
 
                 if (step % dnn_update_frequency) == 0:
                   self.update_main_network(action, reward, done)
@@ -170,21 +173,18 @@ class AgentDQN:
 
     def test(self, n_episodes=10):
         l_total_rewards = []
-        info_eps = []
         for episode in range(n_episodes):
             # Inicialización del entorno
-            info_step = []
             next_state = self.env.reset()
             self.next_state = self.flatten_state(next_state)
             self.total_reward = 0
+            step = 1
             done = False
 
             while not done:     
                 self.state = self.next_state.copy()
-                _, _, done, info = self.step('test')
-                info_step.append(deepcopy(info))
+                action, reward, done = self.step('test')
                 if done:
-                    l_total_rewards.append(self.total_reward)
-                    info_eps.append(info_step)   
+                    l_total_rewards.append(self.total_reward)    
             print("Episode {} \tReward: {:.2f}".format(episode, self.total_reward))
-        return l_total_rewards, info_eps
+        return l_total_rewards
