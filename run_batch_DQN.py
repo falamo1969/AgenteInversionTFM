@@ -6,7 +6,7 @@ import numpy as np
 import time
 import pickle
 
-from AgentDQN import AgentDQN
+from AgentDQN_v1 import AgentDQN
 import gym
 import EntornoAgenteInversion
 
@@ -17,7 +17,7 @@ ETF_data_fl = ".\data\csv\ETF-prices.csv"
 test_size = 730 # 2 años
 # Vamos a testear 2 periodos raros, 2008-2009, 2020-2022, y dos periodos normales 2012-2014 y 2018-2020
 idx_l = [2927, 7310, 4388, 6580]
-test_name_l = ['2008-2009_dqn_v1', '2020-2022_dqn_v1', '2012-2014_dqn_v1', '2018-2020_dqn_v1']
+test_name_l = ['2008-2009_dqn_v1','2020-2022_dqn_v1', '2012-2014_dqn_v1', '2018-2020_dqn_v1']
 
 now = datetime.now()
 print("Empezando batch: ",now.strftime("%d-%b %H:%M:%S"))
@@ -86,7 +86,7 @@ for idx, test_name in (zip(idx_l, test_name_l)):
         for i in range(N_TESTS):
             # Hay que inicializar cada test, si no salen todas las rewards casi iguales
             dqn_agent_test = AgentDQN(env_test, state_size, action_size)
-            dqn_agent_test.load_model('Models/DQN/'+f_name)          
+            dqn_agent_test.load_model('Models/DQN/'+f_name)
             test_reward, test_info = dqn_agent_test.test()
             l_rewards.append(test_reward)
             l_info.append(test_info)

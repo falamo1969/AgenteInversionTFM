@@ -25,7 +25,7 @@ def AgenteA2CTrain(model_name, train_data, total_timesteps=1000000, inversion = 
 
     # Check para el funcionamiento del entorno custom
     #check_env(env, True, True)
-    log_dir = "./logs/"
+    log_dir = "./logs/A2C_3M"
     os.makedirs(log_dir, exist_ok=True)
     
     # Para el monitor de TensorBoard
@@ -45,13 +45,14 @@ def AgenteA2CTrain(model_name, train_data, total_timesteps=1000000, inversion = 
     return model
 
 
-def AgenteA2CTest(model, test_data, results_file, n_episodes=10, inversion = 100000, cv_cost = 0.0025, custody_cost = 0.0015, verbose = 0):
+def AgenteA2CTest(model, test_data, results_file, n_episodes=10, inversion = 100000, 
+                  cv_cost = 0.0025, custody_cost = 0.0015, portfolio = [], verbose = 0):
     # Creo el entorno
     env = gym.make('FinancialEconomicEnv-v0', fin_data_df=test_data['fin_data'], 
                                             eco_data_df=test_data['eco_data'],
                                             ETF_prices_df=test_data['ETF_prices'],
                                             initial_amount=inversion, volume_trade = 1,
-                                            trading_cost=cv_cost, custody_cost=custody_cost)
+                                            trading_cost=cv_cost, custody_cost=custody_cost, portfolio=portfolio)
 
 
     # Evaluación del modelo

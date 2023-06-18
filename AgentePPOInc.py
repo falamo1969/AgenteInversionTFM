@@ -25,7 +25,7 @@ def AgentePPOTrain(model_name, train_data, total_timesteps=1000000, n_loops = 1,
 
     # Check para el funcionamiento del entorno custom
     #check_env(env, True, True)
-    log_dir = "./logs/"
+    log_dir = "./logs/PPO/"
     os.makedirs(log_dir, exist_ok=True)
     
     # Para el monitor de TensorBoard

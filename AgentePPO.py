@@ -4,8 +4,6 @@ import time
 import pickle
 import os
 import matplotlib.pyplot as plt
-from Callbacks_module import MyCallback
-
 import gym
 import EntornoAgenteInversion
 
@@ -46,13 +44,14 @@ def AgentePPOTrain(model_name, train_data, total_timesteps=1000000, inversion = 
     return model
 
 
-def AgentePPOTest(model, test_data, results_file, n_episodes=10, inversion = 100000, cv_cost = 0.0025, custody_cost = 0.0015, verbose = 0):
+def AgentePPOTest(model, test_data, results_file, n_episodes=10, inversion = 100000,
+                  cv_cost = 0.0025, custody_cost = 0.0015, portfolio = [], verbose = 0):
     # Creo el entorno
     env = gym.make('FinancialEconomicEnv-v0', fin_data_df=test_data['fin_data'], 
                                             eco_data_df=test_data['eco_data'],
                                             ETF_prices_df=test_data['ETF_prices'],
                                             initial_amount=inversion, volume_trade = 1,
-                                            trading_cost=cv_cost, custody_cost=custody_cost)
+                                            trading_cost=cv_cost, custody_cost=custody_cost, portfolio=portfolio)
 
 
     # Evaluación del modelo

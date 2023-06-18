@@ -169,7 +169,8 @@ class AgentDQNLSTM:
 
     def load_model(self, fname):
         for i in range(self.n_assets):
-            self.main_network[i].state_dict(torch.load(fname+"_"+str(i)+".pth"))
+            self.main_network[i].load_state_dict(torch.load(fname+"_"+str(i)+".pth"))
+            self.main_network[i].eval()
 
     def test(self):
         # Inicialización del entorno

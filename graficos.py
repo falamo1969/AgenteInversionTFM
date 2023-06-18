@@ -23,10 +23,8 @@ test_name_l = ['Rendimiento 2008-2009', 'Rendimiento 2020-2021', 'Rendimiento 20
     
 fin_data_f = ".\data\csv\Financial Data.csv"
 fin_data_df = pd.read_csv(fin_data_f, parse_dates=['Dates'] ,usecols=lambda column: column == 'Dates' or column=='S&P 500')
-print(fin_data_df.loc[2927]['S&P 500'])
-
 
 for idx, test_name in zip(idx_l, test_name_l):
-    print(fin_data_df.loc[idx]['S&P 500'])
     fin_data_df['Rendimiento S&P500'] = fin_data_df.loc[:]['S&P 500']/fin_data_df.loc[idx]['S&P 500']*100
-    plot_result(fin_data_df, test_name, 2, 'Rendimiento base 100', idx)
+#    plot_result(fin_data_df, test_name, 2, 'Rendimiento base 100', idx)
+    print(f"periodo {test_name}, rendimiento {fin_data_df['Rendimiento S&P500'][idx+730]-100}")

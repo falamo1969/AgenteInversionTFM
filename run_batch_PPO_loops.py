@@ -17,9 +17,6 @@ test_name_l = ['2008-2009_v2', '2020-2022_v2', '2012-2014_v2', '2018-2020_v2']
 n_loops = 3
 verbose  = 1
 
-#idx_l = [7310]
-#test_name_l = ['2020-2022_v3']
-
 
 now = datetime.now()
 print("Empezando batch.", now.strftime("%d-%b %H:%M:%S"))

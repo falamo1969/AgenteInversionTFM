@@ -30,12 +30,15 @@ class AgentDQN:
         self.n_assets = action_size[1]
         self.lr = lr
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._initialize()
         self.state = []
         self.next_state = []
         self.epsilon = epsilon
         self.total_reward=0
-    
+        self.LOSS_RANGE = 1E6
+        self.loss_outsider = 0
+        # Inicializa las redes y estadísticas    
+        self._initialize()
+
     def flatten_state(self, state):
         state_flat = np.zeros(0)
         if isinstance(state, dict):
@@ -49,7 +52,11 @@ class AgentDQN:
         # Inicialización de las redes
         self.main_network = [QNetwork(self.state_size, self.action_size).to(self.device) for _ in range(self.n_assets)]
         self.target_network= deepcopy(self.main_network)
-        self.optimizer = [optim.Adam(self.main_network[i].parameters(), lr = self.lr) for i in range(self.n_assets)]
+        params =  []
+        for i in range(self.n_assets):
+            params += list(self.main_network[i].parameters())
+            
+        self.optimizer = optim.Adam(params=params, lr = self.lr)
 
         # Variables estadísticas
         self.l_epsilons = []
@@ -71,7 +78,8 @@ class AgentDQN:
         state = torch.FloatTensor(self.state).to(self.device)
         if not done:
             next_state = torch.FloatTensor(self.next_state).to(self.device)
-
+        loss = torch.empty((), dtype=torch.float)
+        self.optimizer.zero_grad()
         for i in range(self.n_assets):
             q_values = self.main_network[i](state)
             q_value = q_values[action[i]]
@@ -85,15 +93,18 @@ class AgentDQN:
 
                 target_q_value = reward + self.gamma * next_q_value
                 
-            loss = nn.functional.smooth_l1_loss(q_value, target_q_value)
-            self.optimizer[i].zero_grad()
-            loss.backward()
-            self.optimizer[i].step()
-            # Guardamos los valores de pérdida
-            if self.device == 'cuda':
+            loss += nn.functional.smooth_l1_loss(q_value, target_q_value)
+        loss.backward()
+        self.optimizer.step()
+
+        # Guardamos los valores de pérdida quitando outsiders
+        if (loss < self.LOSS_RANGE) & (loss >-self.LOSS_RANGE):
+            if self.device != 'cuda':
                 self.update_loss.append(loss.detach().cpu().numpy())
             else:
-                self.update_loss.append(loss.detach().numpy())            
+                self.update_loss.append(loss.detach().numpy())
+        else:
+            self.loss_outsider +=1          
 
     def step(self, mode='train'):
         if (mode == 'explore') or ((mode=='train') & (random.uniform(0, 1) < self.epsilon)):
@@ -114,7 +125,6 @@ class AgentDQN:
         self.gamma = gamma
 
         episode = 0
-        print("Training DQN Agent...")
         for episode in range(1, n_episodes+1):
             t_start = time.time()
             # Inicialización del entorno
@@ -123,9 +133,10 @@ class AgentDQN:
             self.total_reward = 0
             step = 1
             done = False
+            self.loss_outsider = 0
 
             while done == False:
-                self.state = self.next_state.copy()
+                self.state = deepcopy(self.next_state)
                 action, reward, done, info = self.step()
 
                 if (step % dnn_update_frequency) == 0:
@@ -137,6 +148,7 @@ class AgentDQN:
                 step += 1
             # Update del último estado (done)
             self.update_main_network(action, reward, done)
+            #print(f"Numero de outsiders loss {self.loss_outsider}")
 
         #####       ALMACENAR EL SEGUIMIENTO DE INFORMACIÓN  LOSS, REWARD, ETC    #######
 
@@ -166,7 +178,8 @@ class AgentDQN:
 
     def load_model(self, fname):
         for i in range(self.n_assets):
-            self.main_network[i].state_dict(torch.load(fname+"_"+str(i)+".pth"))
+            self.main_network[i].load_state_dict(torch.load(fname+"_"+str(i)+".pth"))
+            self.main_network[i].eval()
 
     def test(self):
         # Inicialización del entorno
