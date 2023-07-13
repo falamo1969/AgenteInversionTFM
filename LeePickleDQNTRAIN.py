@@ -72,7 +72,8 @@ def plot_train_DQN_period(fnames, feature, labels=[], save='', path = './logs/DQ
         else:
             plt.plot(x, y, label=f_name)
 
-    plt.ylim(0,1500)
+    if feature  == 'loss':
+        plt.ylim(0,1500)
     plt.xlabel('Episodes')
     plt.title(feature)
     plt.legend()
@@ -87,10 +88,10 @@ def run_figures_trainLSTM(features, periodos, modelo):
             labels = [modelo + '_v1_400_EPS', modelo +'_v2_300_EPS', modelo +'_v3_300_EPS']
             files = ['agentDQN-LSTM_'+ periodo +'_lstm_v1_400_EPS', 
                     'agentDQN-LSTM_'+ periodo +'_lstm_v2_300_EPS',
-                    'agentDQN-LSTM_'+ periodo +'_lstm_v3_300_EPS']
+                    'agentDQN-LSTM_'+ periodo +'_lstm_v4_300_EPS']
 
             plot_train_DQN_period(files, feature, labels=labels, 
-                                save = './figures/LSTM_'+periodo+'_'+feature+'_TRAIN.png', path='./logs/LSTM/')
+                                save = './figures/LSTM_'+periodo+'_'+feature+'_TRAIN_corr.png', path='./logs/LSTM/')
             
 def run_figures_trainDQN(features, periodos, modelo):
     for feature in features:
@@ -128,6 +129,9 @@ features = ['loss', 'mean_train_rewards']
 periodos = ['2008-2009', '2012-2014', '2018-2020', '2020-2022']
 N_EPS_CALCULO = 50
 modelo = 'LSTM'
+
+
+run_figures_trainLSTM(features, periodos, modelo)
 
 #Configuración DQN
 if modelo == 'DQN':

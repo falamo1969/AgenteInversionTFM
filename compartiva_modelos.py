@@ -48,7 +48,10 @@ def compara_modelos_SP500_full_invested(fname):
     pd_csv = pd.read_csv(fname, header=0)
     
     pd_csv = pd_csv.pivot(index='Periodo', columns='Modelo', values='Rendimiento')
+    
+    columnas_ordered = ['DQN_v2', 'LSTM_V2', 'A2C_V1', 'PPO_V3_LR_0.0005', 'SP500']
 
+    pd_csv = pd_csv.reindex(columns=columnas_ordered)
     # Configurar el gráfico de columnas adyacentes
     fig, ax = plt.subplots()
 
@@ -67,11 +70,12 @@ def compara_modelos_SP500_full_invested(fname):
     plt.savefig('./figures/comparativa_SP500_full_invested.png', format='png')
     plt.show()
 
+fname = './results/resumen_resultados_portfolio_inicial.csv'
+compara_modelos_SP500_full_invested(fname=fname)
+
 fname = './Tabla comparativas modelos v15-06-23.xlsx'
 compara_modelos(fname)
 
 fname = './Tabla comparativas modelos v15-06-23.xlsx'
 compara_modelos_SP500(fname=fname)
 
-fname = './results/resumen_resultados_portfolio_inicial.csv'
-compara_modelos_SP500_full_invested(fname=fname)
